@@ -1,0 +1,123 @@
+LOAD r0, 0
+SETR r1, 86
+CMP r0, r1
+JNE fail
+LOAD r0, 1
+SETR r1, 109
+CMP r0, r1
+JNE fail
+LOAD r0, 2
+SETR r1, 48
+CMP r0, r1
+JNE fail
+LOAD r0, 3
+SETR r1, 98
+CMP r0, r1
+JNE fail
+LOAD r0, 4
+SETR r1, 102
+CMP r0, r1
+JNE fail
+LOAD r0, 5
+SETR r1, 117
+CMP r0, r1
+JNE fail
+LOAD r0, 6
+SETR r1, 115
+CMP r0, r1
+JNE fail
+LOAD r0, 7
+SETR r1, 99
+CMP r0, r1
+JNE fail
+LOAD r0, 8
+SETR r1, 64
+CMP r0, r1
+JNE fail
+LOAD r0, 9
+SETR r1, 116
+CMP r0, r1
+JNE fail
+LOAD r0, 10
+SETR r1, 49
+CMP r0, r1
+JNE fail
+LOAD r0, 11
+SETR r1, 48
+CMP r0, r1
+JNE fail
+LOAD r0, 12
+SETR r1, 110
+CMP r0, r1
+JNE fail
+LOAD r0, 13
+SETR r1, 95
+CMP r0, r1
+JNE fail
+LOAD r0, 14
+SETR r1, 49
+CMP r0, r1
+JNE fail
+LOAD r0, 15
+SETR r1, 115
+CMP r0, r1
+JNE fail
+LOAD r0, 16
+SETR r1, 95
+CMP r0, r1
+JNE fail
+LOAD r0, 17
+SETR r1, 71
+CMP r0, r1
+JNE fail
+LOAD r0, 18
+SETR r1, 48
+CMP r0, r1
+JNE fail
+LOAD r0, 19
+SETR r1, 48
+CMP r0, r1
+JNE fail
+LOAD r0, 20
+SETR r1, 100
+CMP r0, r1
+JNE fail
+SETR r0, 71
+PRINTC r0
+SETR r0, 111
+PRINTC r0
+SETR r0, 111
+PRINTC r0
+SETR r0, 100
+PRINTC r0
+SETR r0, 10
+PRINTC r0
+HALT
+fail:
+SETR r0, 66
+PRINTC r0
+SETR r0, 97
+PRINTC r0
+SETR r0, 100
+PRINTC r0
+SETR r0, 32
+PRINTC r0
+SETR r0, 112
+PRINTC r0
+SETR r0, 97
+PRINTC r0
+SETR r0, 115
+PRINTC r0
+SETR r0, 115
+PRINTC r0
+SETR r0, 119
+PRINTC r0
+SETR r0, 111
+PRINTC r0
+SETR r0, 114
+PRINTC r0
+SETR r0, 100
+PRINTC r0
+SETR r0, 10
+PRINTC r0
+HALT

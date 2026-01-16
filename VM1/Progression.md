@@ -5,7 +5,7 @@
 Phase 1 [████████████████████] 100%
 Phase 2 [████████████████████] 100%
 Phase 3 [████████████████████] 100%
-Phase 4 [░░░░░░░░░░░░░░░░░░░░] 0%
+Phase 4 [████████████░░░░░░░░] 66%
 Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 ```
 
@@ -56,21 +56,6 @@ Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 | 3.2 | Opcodes randomisés | ✅ |
 | 3.3 | Chiffrement rolling (clé qui évolue) | ✅ |
 
-**Étape 3.1 — Terminée :**
-- ✅ Assembleur modifié pour XOR le bytecode
-- ✅ Macro `READ()` pour déchiffrer
-- ✅ Bug corrigé : `__uint8_t` au lieu de `__int8_t`
-
-**Étape 3.2 — Terminée :**
-- ✅ Génération aléatoire des opcodes
-- ✅ Fichiers `opcodes.h` et `bytecode.h` générés automatiquement
-- ✅ VM synchronisée via `#include`
-
-**Étape 3.3 — Terminée :**
-- ✅ Rolling XOR implémenté dans l'assembleur
-- ✅ Pré-calcul des clés pour gérer les sauts
-- ✅ Fonctions `read_byte()` et `peek_byte()`
-
 **Ce que tu as appris :**
 - Chiffrement XOR et ses limites
 - Rolling XOR pour une meilleure sécurité
@@ -83,9 +68,27 @@ Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 
 | Étape | Description | Statut |
 |-------|-------------|--------|
-| 4.1 | Indirect threading (table de handlers) | ⏳ À faire |
-| 4.2 | Self-modifying code | ⏳ À faire |
+| 4.1 | Indirect threading (table de handlers) | ✅ |
+| 4.2 | Self-modifying code | 🔄 En cours |
 | 4.3 | Anti-debug basique | ⏳ À faire |
+
+**Étape 4.1 — Terminée :**
+- ✅ Fonction séparée pour chaque instruction (handlers)
+- ✅ Table de pointeurs de fonctions `handlers[]`
+- ✅ Appel via `handlers[opcode](&vm)`
+- ✅ Plus de `switch` visible
+
+**Étape 4.2 — En cours :**
+- ✅ Compris le concept du self-modifying code
+- ✅ Compris le problème des boucles
+- ✅ Choix de l'approche : détruire sans garder (sécurité maximale)
+- ⏳ Implémentation à faire
+
+**Ce que tu as appris :**
+- Pointeurs de fonctions en C
+- Indirect threading pour cacher la structure du switch
+- Self-modifying code : modifier le bytecode après lecture
+- Compromis boucles vs sécurité
 
 ---
 
@@ -102,7 +105,7 @@ Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 ## 📁 Structure actuelle du projet
 ```
 projet/
-├── vm.c                  # VM avec rolling XOR et pré-calcul des clés
+├── vm.c                  # VM avec indirect threading
 ├── assembler.py          # Génère opcodes.h et bytecode.h
 ├── opcodes.h             # Opcodes aléatoires + INITIAL_KEY (auto-généré)
 ├── bytecode.h            # Bytecode chiffré + BYTECODE_SIZE (auto-généré)
@@ -119,10 +122,10 @@ projet/
 | Bytecode chiffré (XOR simple) | ✅ |
 | Opcodes mutés | ✅ |
 | Rolling XOR | ✅ |
-| Indirect threading | ❌ |
-| Self-modifying | ❌ |
+| Indirect threading | ✅ |
+| Self-modifying | 🔄 |
 | Anti-debug | ❌ |
 
-**Difficulté estimée pour un reverser : ⭐⭐⭐ (Moyen)**
+**Difficulté estimée pour un reverser : ⭐⭐⭐⭐ (Difficile)**
 
 Objectif final : ⭐⭐⭐⭐⭐ (Très difficile)

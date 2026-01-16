@@ -8,19 +8,20 @@ SIZES = {
     'SETR': 3,
     'ADDR': 4,
     'PRINTR': 2,
+    'PRINTC': 2,
     'LOAD': 3,
     'STORE': 3,
     'CMP': 3,
-    'JMP': 2,
-    'JEQ': 2,
-    'JNE': 2,
+    'JMP': 3,
+    'JEQ': 3,
+    'JNE': 3,
     'HALT': 1,
 }
 
 def generate_opcodes():
     values = list(range(0x10, 0xF0))
     random.shuffle(values)
-    names = ['SETR', 'ADDR', 'PRINTR', 'LOAD', 'STORE', 'CMP', 'JMP', 'JEQ', 'JNE']
+    names = ['SETR', 'ADDR', 'PRINTR', 'LOAD', 'STORE', 'CMP', 'JMP', 'JEQ', 'JNE','PRINTC']
     opcodes = {}
     for i, name in enumerate(names):
         opcodes[name] = values[i]
@@ -73,6 +74,9 @@ def assemble(filename, opcodes):
         elif instr == 'PRINTR':
             reg = int(parts[1][1:])
             bytecode.append(reg)
+        elif instr == 'PRINTC':
+            reg = int(parts[1][1:])
+            bytecode.append(reg)
         elif instr == 'ADDR':
             bytecode.extend([
                 int(parts[1][1:]),
@@ -95,7 +99,13 @@ def assemble(filename, opcodes):
             target_label = parts[1]
             target_pc = labels[target_label]
             offset = target_pc - pc
-            bytecode.append(offset)
+            
+            #eviter overflow
+            val = offset & 0xFFFF
+            high_byte = (val >> 8) & 0xFF
+            low_byte = val & 0xFF
+            bytecode.extend([high_byte, low_byte])
+            
 
         pc += SIZES[instr]
 

@@ -3,7 +3,7 @@
 #include "opcodes.h"
 
 
-
+// check si : Vm0bfusc@t10n_1s_G00d
 typedef struct {
     __int8_t regs[4];
     __uint8_t memory[256];
@@ -12,6 +12,7 @@ typedef struct {
 } VM;
 
 typedef void (*handler_t)(VM*);
+
 
 // Tableau des clés pré-calculées
 __uint8_t keys[BYTECODE_SIZE];
@@ -29,6 +30,13 @@ __uint8_t read_byte(VM *vm) {
     __uint8_t dec = bytecode[vm->pc] ^ keys[vm->pc];
     vm->pc++;
     return dec;
+}
+
+
+__int16_t read_short(VM *vm) {
+    __uint8_t high = read_byte(vm);
+    __uint8_t low = read_byte(vm);
+    return (__int16_t)((high << 8) | low);
 }
 
 __uint8_t peek_byte(VM *vm) {
@@ -74,25 +82,32 @@ void handle_cmp(VM * vm){
 }
 
 void handle_jmp(VM * vm){
-    __int8_t offset = (__int8_t)read_byte(vm);
-    vm->pc = vm->pc - 2 + offset; 
+    __int16_t offset = read_short(vm);
+    vm->pc = vm->pc - 3 + offset; 
 }
 
 void handle_jeq(VM * vm){
-    __int8_t offset = (__int8_t)read_byte(vm);
+    __int16_t offset = read_short(vm);
     if (vm->flag) {
-        vm->pc = vm->pc - 2 + offset;
+        vm->pc = vm->pc - 3 + offset;
     }
                 
 }
 
 void handle_jne(VM * vm){
-    __int8_t offset = (__int8_t)read_byte(vm);
+    __int16_t offset = read_short(vm);
     if (!vm->flag) {
-        vm->pc = vm->pc - 2 + offset;
+        vm->pc = vm->pc - 3 + offset;
     }
                 
 }
+
+void handle_printc(VM *vm) {
+    __uint8_t reg = read_byte(vm);
+    printf("%c", vm->regs[reg]);
+}
+
+
 
 int main(void) {
     VM vm = {0};
@@ -107,6 +122,7 @@ int main(void) {
     handlers[JMP] = handle_jmp;
     handlers[JEQ] = handle_jeq;
     handlers[JNE] = handle_jne;
+    handlers[PRINTC] = handle_printc;
 
 
     printf("Password: ");
@@ -114,6 +130,7 @@ int main(void) {
 
     while (peek_byte(&vm) != HALT) {
         __uint8_t opcode = read_byte(&vm);
+        
         handlers[opcode](&vm);
     }
 
