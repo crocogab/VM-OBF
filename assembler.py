@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 import sys
 
+import random
+
+
 KEY = 0x9B  
 
-OPCODES = {
-    'SETR': 0x01,
-    'ADDR': 0x02,
-    'PRINTR': 0x03,
-    'LOAD': 0x04,
-    'STORE': 0x05,
-    'CMP': 0x06,
-    'JMP': 0x07,
-    'JEQ': 0x08,
-    'JNE': 0x09,
-    'HALT': 0xFF,
-}
+
 
 SIZES = {
     'SETR': 3,
@@ -28,6 +20,23 @@ SIZES = {
     'JNE': 2,
     'HALT': 1,
 }
+
+
+
+# genere des OPCODES aléatoires
+def generate_opcodes():
+    values = list(range(0x10, 0xF0))  # Évite 0x00 et 0xFF
+    random.shuffle(values)
+    
+    names = ['SETR', 'ADDR', 'PRINTR', 'LOAD', 'STORE', 'CMP', 'JMP', 'JEQ', 'JNE']
+    opcodes = {}
+    for i, name in enumerate(names):
+        opcodes[name] = values[i]
+    
+    opcodes['HALT'] = 0xFF  # HALT reste fixe
+    return opcodes
+
+
 
 def assemble(filename):
     with open(filename, "r") as f:
@@ -100,11 +109,20 @@ def assemble(filename):
         
         pc += SIZES[instr]
     
-    # Afficher en format C
-    encrypted = [(b ^ KEY) & 0xFF for b in bytecode]
-    bytecode_str = ', '.join(f'0x{b & 0xFF:02X}' for b in encrypted)
-    print(f"__int8_t bytecode[] = {{{bytecode_str}}};")
+    with open("opcodes.h", "w") as f:
+        f.write("// Auto-généré - ne pas modifier\n")
+        f.write(f"#define KEY 0x{KEY:02X}\n")
+        for name, value in OPCODES.items():
+            f.write(f"#define {name} 0x{value:02X}\n")
+    
+    
+    with open("bytecode.h", "w") as f:
+        encrypted = [(b ^ KEY) & 0xFF for b in bytecode]
+        bytecode_str = ', '.join(f'0x{b:02X}' for b in encrypted)
+        f.write(f"__uint8_t bytecode[] = {{{bytecode_str}}};\n")
+    print("Fichiers générés : opcodes.h, bytecode.h")
     
 
 if __name__ == '__main__':
+    OPCODES=generate_opcodes()
     assemble(sys.argv[1])
