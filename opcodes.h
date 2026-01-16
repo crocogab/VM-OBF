@@ -1,12 +1,12 @@
 // Auto-généré - ne pas modifier
-#define KEY 0x9B
-#define SETR 0x9E
-#define ADDR 0x98
-#define PRINTR 0xB3
-#define LOAD 0x9F
-#define STORE 0x66
-#define CMP 0x54
-#define JMP 0xEB
-#define JEQ 0x6D
-#define JNE 0xD0
+#define INITIAL_KEY 0x9B
+#define SETR 0x1F
+#define ADDR 0x45
+#define PRINTR 0x90
+#define LOAD 0x26
+#define STORE 0x9B
+#define CMP 0x24
+#define JMP 0x40
+#define JEQ 0xC1
+#define JNE 0x15
 #define HALT 0xFF

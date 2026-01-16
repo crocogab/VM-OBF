@@ -2,109 +2,120 @@
 #include "bytecode.h"
 #include "opcodes.h"
 
-#define READ(offset) ((__uint8_t)(bytecode[vm.pc + offset] ^ KEY))
 
 
-typedef struct{
-    __int8_t regs[4]; // 4 registres
-    int pc; // pointeur instruction
-    __uint8_t memory[256]; // RAM
-    int flag; // flag resultat condition booleenne
-}VM;
+typedef struct {
+    __int8_t regs[4];
+    __uint8_t memory[256];
+    int flag;
+    int pc;
+} VM;
 
+typedef void (*handler_t)(VM*);
 
+// Tableau des clés pré-calculées
+__uint8_t keys[BYTECODE_SIZE];
 
-int main(void){
-    VM vm ={0};
-    
+void init_keys() {
+    __uint8_t key = INITIAL_KEY;
+    for (int i = 0; i < BYTECODE_SIZE; i++) {
+        keys[i] = key;
+        __uint8_t dec = bytecode[i] ^ key;
+        key = (key ^ dec) & 0xFF;
+    }
+}
+
+__uint8_t read_byte(VM *vm) {
+    __uint8_t dec = bytecode[vm->pc] ^ keys[vm->pc];
+    vm->pc++;
+    return dec;
+}
+
+__uint8_t peek_byte(VM *vm) {
+    // Lire sans avancer (pour vérifier HALT)
+    return bytecode[vm->pc] ^ keys[vm->pc];
+}
+
+void handle_setr(VM *vm) {
+    __uint8_t reg = read_byte(vm);
+    __uint8_t value = read_byte(vm);
+    vm->regs[reg] = value;
+}
+
+void handle_addr(VM * vm){
+    __uint8_t reg_ret = read_byte(vm);
+    __uint8_t reg1 = read_byte(vm);
+    __uint8_t reg2 = read_byte(vm);
+    vm->regs[reg_ret] = vm->regs[reg1] + vm->regs[reg2];
+
+}
+void handle_printr(VM *vm) {
+    __uint8_t reg = read_byte(vm);
+    printf("%d\n", vm->regs[reg]);
+}
+
+void handle_load(VM * vm){
+    __uint8_t reg = read_byte(vm);
+    __uint8_t addr = read_byte(vm);
+    vm->regs[reg] = vm->memory[addr];
+
+}
+
+void handle_store(VM * vm){
+    __uint8_t addr = read_byte(vm);
+    __uint8_t reg = read_byte(vm);
+    vm->memory[addr] = vm->regs[reg];
+}
+
+void handle_cmp(VM * vm){
+    __uint8_t reg1 = read_byte(vm);
+    __uint8_t reg2 = read_byte(vm);
+    vm->flag = (vm->regs[reg1] == vm->regs[reg2]);
+}
+
+void handle_jmp(VM * vm){
+    __int8_t offset = (__int8_t)read_byte(vm);
+    vm->pc = vm->pc - 2 + offset; 
+}
+
+void handle_jeq(VM * vm){
+    __int8_t offset = (__int8_t)read_byte(vm);
+    if (vm->flag) {
+        vm->pc = vm->pc - 2 + offset;
+    }
+                
+}
+
+void handle_jne(VM * vm){
+    __int8_t offset = (__int8_t)read_byte(vm);
+    if (!vm->flag) {
+        vm->pc = vm->pc - 2 + offset;
+    }
+                
+}
+
+int main(void) {
+    VM vm = {0};
+    init_keys();
+    handler_t handlers[256]={0};
+    handlers[SETR] = handle_setr;
+    handlers[ADDR] = handle_addr;
+    handlers[PRINTR] = handle_printr;
+    handlers[LOAD] = handle_load;
+    handlers[STORE] = handle_store;
+    handlers[CMP] = handle_cmp;
+    handlers[JMP] = handle_jmp;
+    handlers[JEQ] = handle_jeq;
+    handlers[JNE] = handle_jne;
+
 
     printf("Password: ");
     scanf("%255s", (char*)vm.memory);
 
-
-    while (READ(0)!=HALT)
-    {   
-        
-        switch (READ(0))
-        {
-        
-        case SETR:{
-            __uint8_t reg = READ(1);
-            __uint8_t value = READ(2);
-
-            vm.regs[reg]=value;
-            vm.pc+=3;
-            break;
-        }    
-        case ADDR:{
-            __uint8_t reg_ret = READ(1);
-            __uint8_t reg1 =READ(2);
-            __uint8_t reg2 = READ(3);
-            
-            vm.regs[reg_ret]=vm.regs[reg1]+vm.regs[reg2];
-            vm.pc+=4;
-            break;
-        }
-        case PRINTR:{
-            __uint8_t reg=READ(1);
-            printf("%d\n",vm.regs[reg]);
-            vm.pc+=2;
-            break;
-        }
-        case LOAD:{
-            __uint8_t reg = READ(1);
-            __uint8_t addr = READ(2);
-
-            vm.regs[reg] = vm.memory[addr];
-            vm.pc+=3;
-            break;
-        }
-        case STORE:{
-            __uint8_t addr = READ(1);
-            __uint8_t reg = READ(2);
-
-            vm.memory[addr] = vm.regs[reg];
-            vm.pc+=3;
-            break;
-        }
-        case CMP:{
-            __uint8_t reg1 = READ(1);
-            __uint8_t reg2 = READ(2);
-
-            vm.flag= (vm.regs[reg1] == vm.regs[reg2]);
-            vm.pc+=3;
-            break;
-        }
-        case JMP:{
-            // attention __int8_t et non pas __uint8_t car offset signé
-            __int8_t offset = READ(1);
-            vm.pc+=offset;
-            break;
-        }
-        case JEQ:{
-            __int8_t offset = READ(1);
-            if (vm.flag){
-                vm.pc+=offset;
-            }else{
-                vm.pc+=2;
-            }
-            break;
-        }
-        case JNE:{
-            __int8_t offset = READ(1);
-            if (!vm.flag){
-                vm.pc+=offset;
-            }else{
-                vm.pc+=2;
-            }
-            break;
-
-        }
-
-        }
-        
+    while (peek_byte(&vm) != HALT) {
+        __uint8_t opcode = read_byte(&vm);
+        handlers[opcode](&vm);
     }
-    
 
     return 0;
 }

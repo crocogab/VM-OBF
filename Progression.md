@@ -4,7 +4,7 @@
 ```
 Phase 1 [████████████████████] 100%
 Phase 2 [████████████████████] 100%
-Phase 3 [████████████░░░░░░░░] 66%
+Phase 3 [████████████████████] 100%
 Phase 4 [░░░░░░░░░░░░░░░░░░░░] 0%
 Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 ```
@@ -48,13 +48,13 @@ Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 
 ---
 
-## 🔄 Phase 3 : Obfuscation niveau 1 (EN COURS)
+## ✅ Phase 3 : Obfuscation niveau 1 (TERMINÉE)
 
 | Étape | Description | Statut |
 |-------|-------------|--------|
 | 3.1 | Chiffrement XOR simple | ✅ |
 | 3.2 | Opcodes randomisés | ✅ |
-| 3.3 | Chiffrement rolling (clé qui évolue) | 🔄 En cours |
+| 3.3 | Chiffrement rolling (clé qui évolue) | ✅ |
 
 **Étape 3.1 — Terminée :**
 - ✅ Assembleur modifié pour XOR le bytecode
@@ -66,19 +66,26 @@ Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 - ✅ Fichiers `opcodes.h` et `bytecode.h` générés automatiquement
 - ✅ VM synchronisée via `#include`
 
-**Étape 3.3 — En cours :**
-- ⏳ Implémenter le rolling XOR dans l'assembleur
-- ⏳ Modifier la VM pour déchiffrer avec clé évolutive
+**Étape 3.3 — Terminée :**
+- ✅ Rolling XOR implémenté dans l'assembleur
+- ✅ Pré-calcul des clés pour gérer les sauts
+- ✅ Fonctions `read_byte()` et `peek_byte()`
+
+**Ce que tu as appris :**
+- Chiffrement XOR et ses limites
+- Rolling XOR pour une meilleure sécurité
+- Problème des sauts avec clé évolutive
+- Solution par pré-calcul des clés
 
 ---
 
-## ⏳ Phase 4 : Obfuscation niveau 2 (À VENIR)
+## 🔄 Phase 4 : Obfuscation niveau 2 (EN COURS)
 
 | Étape | Description | Statut |
 |-------|-------------|--------|
-| 4.1 | Indirect threading (table de handlers) | ⏳ |
-| 4.2 | Self-modifying code | ⏳ |
-| 4.3 | Anti-debug basique | ⏳ |
+| 4.1 | Indirect threading (table de handlers) | ⏳ À faire |
+| 4.2 | Self-modifying code | ⏳ À faire |
+| 4.3 | Anti-debug basique | ⏳ À faire |
 
 ---
 
@@ -95,10 +102,10 @@ Phase 5 [░░░░░░░░░░░░░░░░░░░░] 0%
 ## 📁 Structure actuelle du projet
 ```
 projet/
-├── vm.c                  # VM avec déchiffrement XOR
+├── vm.c                  # VM avec rolling XOR et pré-calcul des clés
 ├── assembler.py          # Génère opcodes.h et bytecode.h
-├── opcodes.h             # Opcodes aléatoires (auto-généré)
-├── bytecode.h            # Bytecode chiffré (auto-généré)
+├── opcodes.h             # Opcodes aléatoires + INITIAL_KEY (auto-généré)
+├── bytecode.h            # Bytecode chiffré + BYTECODE_SIZE (auto-généré)
 └── check_password.asm    # Vérifie "ABC"
 ```
 
@@ -111,7 +118,7 @@ projet/
 | VM custom | ✅ |
 | Bytecode chiffré (XOR simple) | ✅ |
 | Opcodes mutés | ✅ |
-| Rolling XOR | ❌ |
+| Rolling XOR | ✅ |
 | Indirect threading | ❌ |
 | Self-modifying | ❌ |
 | Anti-debug | ❌ |
