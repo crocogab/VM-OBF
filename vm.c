@@ -10,6 +10,9 @@
 
 // CMP + JMP
 #define CMP 0x06
+#define JMP 0x07
+#define JEQ 0x08
+#define JNE 0x09
 
 #define HALT 0xFF
 
@@ -29,7 +32,7 @@ int main(void){
     vm.memory[0]='H';
     vm.memory[1]='I';
     
-    __int8_t bytecode[]={LOAD,0,0,LOAD,1,1,PRINTR,0,PRINTR,1,HALT};
+    __int8_t bytecode[]={SETR,0,5,SETR,1,5,CMP,0,1,JNE,7,SETR,2,1,JMP,5,SETR,2,0,PRINTR,2,HALT};
 
     while (bytecode[vm.pc]!=HALT)
     {
@@ -74,6 +77,40 @@ int main(void){
             vm.pc+=3;
             break;
         }
+        case CMP:{
+            __uint8_t reg1 = bytecode[vm.pc+1];
+            __uint8_t reg2 = bytecode[vm.pc+2];
+
+            vm.flag= (vm.regs[reg1] == vm.regs[reg2]);
+            vm.pc+=3;
+            break;
+        }
+        case JMP:{
+            // attention __int8_t et non pas __uint8_t car offset signé
+            __int8_t offset = bytecode[vm.pc+1];
+            vm.pc+=offset;
+            break;
+        }
+        case JEQ:{
+            __int8_t offset = bytecode[vm.pc+1];
+            if (vm.flag){
+                vm.pc+=offset;
+            }else{
+                vm.pc+=2;
+            }
+            break;
+        }
+        case JNE:{
+            __int8_t offset = bytecode[vm.pc+1];
+            if (!vm.flag){
+                vm.pc+=offset;
+            }else{
+                vm.pc+=2;
+            }
+            break;
+
+        }
+
         }
         
     }
