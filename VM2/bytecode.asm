@@ -1,0 +1,29 @@
+; les données sont en mémoire (par exemple SECRET) vm->input[0]='S' etc...
+LOAD 0
+PUSH 53
+CMP
+JNE 26
+LOAD 1
+PUSH 45
+CMP
+JNE 26
+LOAD 2
+PUSH 43
+CMP
+JNE 26
+LOAD 3 
+PUSH 52
+CMP 
+JNE 26
+LOAD 4
+PUSH 45
+CMP
+JNE 26
+LOAD 5
+PUSH 54
+CMP
+JNE 26
+PUSH 1 
+JMP 27
+PUSH 0
+HALT
