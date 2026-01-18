@@ -10,6 +10,9 @@
 #define JEQ  0x07
 #define JNE  0x08
 #define LOAD 0x09
+#define STORE 0x0A 
+#define DUP  0x0B 
+#define SWAP  0x0C
 #define HALT 0xFF
 
 // === OPCODE MAPPING ===
@@ -49,6 +52,18 @@
 #define LOAD3 0x29
 #define LOAD4 0x39
 
+#define STORE2 0x1A
+#define STORE3 0x2A
+#define STORE4 0x3A
+
+#define DUP2  0x1B
+#define DUP3  0x2B
+#define DUP4  0x3B
+
+#define SWAP2  0x1C
+#define SWAP3  0x2C
+#define SWAP4  0x3C
+
 #define HALT2 0xFE
 #define HALT3 0xFD
 #define HALT4 0xFC
@@ -68,7 +83,8 @@ typedef struct VMContext {
     __uint64_t flag;
     char input[256];
     __uint64_t decrypt_key;
-    int running;  // nouveau : contrôle la boucle
+    int running;  
+    __uint64_t memory[256]; // memoire RAM de la VM
 } VMContext;
 
 // Forward declaration pour le type Handler
@@ -178,6 +194,28 @@ void handler_invalid(VMContext *vm, __uint64_t *bytecode) {
     vm->running = 0;
 }
 
+void handler_store(VMContext *vm,__uint64_t *bytecode){
+    // memory[idx] = pop()
+    __uint64_t index = read_word(vm,bytecode);
+    __uint64_t value = pop(vm);
+    vm->memory[index] = value;
+}
+
+void handler_dup(VMContext *vm,__uint64_t *bytecode){
+    // push(stack[sp-1]) sans dépiler
+    (void) bytecode;
+    push(vm,vm->stack.array[vm->stack_pointer-1]);
+}
+
+void handler_swap(VMContext *vm,__uint64_t *bytecode){
+    (void) bytecode;
+    __uint64_t a = pop(vm); // top de la pile
+    __uint64_t b = pop(vm);
+    push(vm,a);
+    push(vm,b);
+}
+
+
 // === TABLE DE HANDLERS ===
 Handler handlers[256];
 
@@ -240,12 +278,32 @@ void init_handlers(void) {
     handlers[LOAD2] = handler_load;
     handlers[LOAD3] = handler_load;
     handlers[LOAD4] = handler_load;
+
+    //STORE
+    handlers[STORE]  = handler_store;
+    handlers[STORE2] = handler_store;
+    handlers[STORE3] = handler_store;
+    handlers[STORE4] = handler_store;
+
+    //DUP
+    handlers[DUP]  = handler_dup;
+    handlers[DUP2] = handler_dup;
+    handlers[DUP3] = handler_dup;
+    handlers[DUP4] = handler_dup;
+
+    //SWAP
+    handlers[SWAP]  = handler_swap;
+    handlers[SWAP2] = handler_swap;
+    handlers[SWAP3] = handler_swap;
+    handlers[SWAP4] = handler_swap;
     
     // HALT
     handlers[HALT]  = handler_halt;
     handlers[HALT2] = handler_halt;
     handlers[HALT3] = handler_halt;
     handlers[HALT4] = handler_halt;
+
+    
 }
 
 // === RUN (simplifié) ===
@@ -267,15 +325,9 @@ void init_vm(VMContext *vm) {
     vm->running = 0;
     memset(vm->input, 0, sizeof(vm->input));
     vm->decrypt_key = KEY;
+    memset(vm->memory, 0, sizeof(vm->memory));
 }
 
-void encrypt_bytecode(__uint64_t *bytecode, size_t len) {
-    __uint64_t key = KEY;
-    for (size_t i = 0; i < len; i++) {
-        bytecode[i] ^= key;
-        key = (key + 7) & 0xFF;
-    }
-}
 
 // === MAIN ===
 int main(void) {
@@ -283,21 +335,15 @@ int main(void) {
     
     VMContext vm;
     init_vm(&vm);
-    strcpy(vm.input, "SECRET");
+    printf("Entrez l'input : ");
+    scanf("%255s", vm.input);
 
     __uint64_t bytecode[] = {
-        LOAD, 0, PUSH, 83, CMP4, JNE, 46,
-        LOAD, 1, PUSH2, 69, CMP3, JNE2, 46,
-        LOAD, 2, PUSH4, 67, CMP2, JNE, 46,
-        LOAD, 3, PUSH2, 82, CMP2, JNE4, 46,
-        LOAD, 4, PUSH3, 69, CMP3, JNE4, 46,
-        LOAD, 5, PUSH, 84, CMP3, JNE3, 46,
-        PUSH2, 1, JMP, 48,
-        PUSH4, 0, HALT
+    0x1E, 0x3E, 0x74, 0x1F, 0x66, 0x62, 0x6A, 0x59, 0x6E, 0x50, 0x70, 0x85, 0x8B, 0x6C
     };
-
-    size_t len = sizeof(bytecode) / sizeof(bytecode[0]);
-    encrypt_bytecode(bytecode, len);
+    
+    
+    
 
     run(&vm, bytecode);
     printf("Valeur sommet pile : %llu\n", vm.stack.array[vm.stack_pointer - 1]);

@@ -92,6 +92,9 @@ Créer une VM d'obfuscation robuste basée sur une stack machine pour protéger 
 | JEQ 0x07 | 0x17 | 0x27 | 0x37 |
 | JNE 0x08 | 0x18 | 0x28 | 0x38 |
 | LOAD 0x09 | 0x19 | 0x29 | 0x39 |
+| STORE 0x0A | 0x1A | 0x2A | 0x3A |
+| DUP 0x0B | 0x1B | 0x2B | 0x3B |
+| SWAP 0x0C | 0x1C | 0x2C | 0x3C |
 | HALT 0xFF | 0xFE | 0xFD | 0xFC |
 
 ---
@@ -121,11 +124,50 @@ result = t1 + t2 + t3 + 4;
 
 ---
 
+## ✅ Étape 7.5 : Instructions avancées + Assembleur (COMPLÉTÉ)
+
+### Nouvelles instructions
+- [x] `STORE` (0x0A) — memory[idx] = pop()
+- [x] `DUP` (0x0B) — duplique le sommet de pile
+- [x] `SWAP` (0x0C) — échange les 2 éléments du sommet
+- [x] Mémoire RAM `memory[256]` dans VMContext
+
+### Assembleur Python
+- [x] Parsing de fichiers `.asm`
+- [x] Support des labels (ex: `fail:`, `start:`)
+- [x] Résolution en deux passes
+- [x] Pass 1 : collecte des labels et adresses
+- [x] Pass 2 : génération du bytecode
+- [x] Support des commentaires (`;`)
+- [x] Génération de tableau C prêt à copier
+
+### Exemple de syntaxe supportée
+```asm
+; Vérifie si input[0] == 'S'
+start:
+    LOAD 0
+    PUSH 83
+    CMP
+    JNE fail
+
+success:
+    PUSH 1
+    JMP end
+
+fail:
+    PUSH 0
+
+end:
+    HALT
+```
+
+---
+
 ## 📋 Étape 8 : Obfuscation niveau 3 (À VENIR)
 
 ### Techniques à implémenter
+- [ ] Dead code insertion (dans l'assembleur Python)
 - [ ] Super-operators (fusionner plusieurs opérations)
-- [ ] Dead code insertion
 - [ ] Control Flow Flattening
 
 ---
@@ -133,9 +175,18 @@ result = t1 + t2 + t3 + 4;
 ## 📊 Progression globale
 
 ```
-[██████████████████░░] 85% - VM avec rolling XOR + opcode mapping + handlers + MBA
+[███████████████████░] 90% - VM complète + Assembleur Python
 ```
 
+---
+
+## 📁 Fichiers du projet
+
+| Fichier | Description |
+|---------|-------------|
+| `vm.c` | VM principale avec tous les handlers |
+| `assembler.py` | Convertisseur ASM → bytecode C |
+| `test.asm` | Programme de test |
 
 ---
 
@@ -150,6 +201,6 @@ result = t1 + t2 + t3 + 4;
 
 ## 🎯 Prochaines étapes suggérées
 
-1. **Super-operators** : Fusionner `LOAD + PUSH + CMP` en un seul opcode
-2. **Dead code insertion** : Ajouter des NOP et opérations neutres
+1. **Dead code insertion** : Modifier l'assembleur pour insérer du bruit automatiquement
+2. **Super-operators** : Fusionner `LOAD + PUSH + CMP` en un seul opcode
 3. **Control Flow Flattening** : Variable d'état + dispatcher central
