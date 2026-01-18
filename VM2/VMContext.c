@@ -70,6 +70,57 @@
 
 #define KEY  0x37
 
+
+typedef enum {
+    STATE_FETCH,
+    STATE_DECODE,
+    STATE_EXEC_PUSH,
+    STATE_EXEC_POP,
+    STATE_EXEC_ADD,
+    STATE_EXEC_SUB,
+    STATE_EXEC_CMP,
+    STATE_EXEC_JMP,
+    STATE_EXEC_JEQ,
+    STATE_EXEC_JNE,
+    STATE_EXEC_LOAD,
+    STATE_EXEC_STORE,
+    STATE_EXEC_DUP,
+    STATE_EXEC_SWAP,
+    STATE_HALT,
+    STATE_FAKE1,
+    STATE_FAKE2,
+    STATE_FAKE3,
+    STATE_FAKE4,
+    STATE_FAKE5
+} VMState;
+
+
+VMState decode_opcode(__uint64_t opcode) {
+    // normalise OPCODE
+    __uint64_t base = opcode;
+    
+    // HALT est spécial (0xFF, 0xFE, 0xFD, 0xFC)
+    if (opcode >= 0xFC) return STATE_HALT;
+    
+    base = opcode & 0x0F;
+    
+    switch (base) {
+        case 0x01: return STATE_EXEC_PUSH;
+        case 0x02: return STATE_EXEC_POP;
+        case 0x03: return STATE_EXEC_ADD;
+        case 0x04: return STATE_EXEC_SUB;
+        case 0x05: return STATE_EXEC_CMP;
+        case 0x06: return STATE_EXEC_JMP;
+        case 0x07: return STATE_EXEC_JEQ;
+        case 0x08: return STATE_EXEC_JNE;
+        case 0x09: return STATE_EXEC_LOAD;
+        case 0x0A: return STATE_EXEC_STORE;
+        case 0x0B: return STATE_EXEC_DUP;
+        case 0x0C: return STATE_EXEC_SWAP;
+        default:   return STATE_HALT;
+    }
+}
+
 // === STRUCTURES ===
 typedef struct Stack {
     __uint64_t array[2048];
@@ -306,16 +357,168 @@ void init_handlers(void) {
     
 }
 
-// === RUN (simplifié) ===
+// RUN
 void run(VMContext *vm, __uint64_t *bytecode) {
+    VMState state = STATE_FETCH;
+    __uint64_t current_opcode = 0;
     vm->running = 1;
-    while (vm->running) {
-        __uint64_t opcode = read_word(vm, bytecode);
-        handlers[opcode](vm, bytecode);
+    
+    while (1) {
+        switch (state) {
+            case STATE_FAKE1:  
+                vm->flag = vm->stack_pointer ^ 0xDEAD;
+                state = STATE_FAKE2;
+            break;
+
+            case STATE_EXEC_SUB:
+                handler_sub(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_SWAP:
+                handler_swap(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            // === DECODE : Déterminer l'instruction ===
+            case STATE_DECODE:
+                switch (current_opcode) {
+                    case PUSH: case PUSH2: case PUSH3: case PUSH4:
+                        state = STATE_EXEC_PUSH;
+                        break;
+                    case POP: case POP2: case POP3: case POP4:
+                        state = STATE_EXEC_POP;
+                        break;
+                    case ADD: case ADD2: case ADD3: case ADD4:
+                        state = STATE_EXEC_ADD;
+                        break;
+                    case SUB: case SUB2: case SUB3: case SUB4:
+                        state = STATE_EXEC_SUB;
+                        break;
+                    case CMP: case CMP2: case CMP3: case CMP4:
+                        state = STATE_EXEC_CMP;
+                        break;
+                    case JMP: case JMP2: case JMP3: case JMP4:
+                        state = STATE_EXEC_JMP;
+                        break;
+                    case JEQ: case JEQ2: case JEQ3: case JEQ4:
+                        state = STATE_EXEC_JEQ;
+                        break;
+                    case JNE: case JNE2: case JNE3: case JNE4:
+                        state = STATE_EXEC_JNE;
+                        break;
+                    case LOAD: case LOAD2: case LOAD3: case LOAD4:
+                        state = STATE_EXEC_LOAD;
+                        break;
+                    case STORE: case STORE2: case STORE3: case STORE4:
+                        state = STATE_EXEC_STORE;
+                        break;
+                    case DUP: case DUP2: case DUP3: case DUP4:
+                        state = STATE_EXEC_DUP;
+                        break;
+                    case SWAP: case SWAP2: case SWAP3: case SWAP4:
+                        state = STATE_EXEC_SWAP;
+                        break;
+                    case HALT: case HALT2: case HALT3: case HALT4:
+                        state = STATE_HALT;
+                        break;
+                    default:
+                        // OPCODE invalide
+                        printf("ERREUR: Opcode invalide 0x%02llX à vip=%llu\n", 
+                               current_opcode, vm->vip - 1);
+                        state = STATE_HALT;
+                        break;
+                }
+                break;   
+            
+            case STATE_EXEC_PUSH:
+                handler_push(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_POP:
+                handler_pop(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_ADD:
+                handler_add(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;  
+            
+            case STATE_EXEC_CMP:
+                handler_cmp(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            case STATE_FAKE5:
+                state = STATE_DECODE;
+                break;
+            
+            // === lecture OPCODE ===
+            case STATE_FETCH:
+                current_opcode = read_word(vm, bytecode);
+
+                int x = vm->vip;
+                if ((x * (x + 1)) % 2 == 0) {  // Toujours vrai !
+                    state = STATE_DECODE;
+                } else {
+                    state = STATE_HALT;  
+                }
+                
+                break;
+            case STATE_EXEC_JMP:
+                handler_jmp(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_JEQ:
+                handler_jeq(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_FAKE4:
+                handler_add(vm,bytecode);
+                state = STATE_FAKE5;
+                break;
+
+            case STATE_EXEC_JNE:
+                handler_jne(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_LOAD:
+                handler_load(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_STORE:
+                handler_store(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_EXEC_DUP:
+                handler_dup(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+            
+            case STATE_FAKE2:
+                handler_push(vm, bytecode);  
+                state = STATE_HALT;
+                break;
+
+            case STATE_FAKE3:
+                current_opcode=read_word(vm,bytecode);
+                current_opcode = current_opcode & 0x3c62;
+                break;
+            
+            
+            case STATE_HALT:
+                return;
+        }
     }
 }
 
-// === INIT VM ===
+
 void init_vm(VMContext *vm) {
     Stack stack = {0};
     vm->stack = stack;

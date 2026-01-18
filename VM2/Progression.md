@@ -140,6 +140,9 @@ result = t1 + t2 + t3 + 4;
 - [x] Pass 2 : génération du bytecode
 - [x] Support des commentaires (`;`)
 - [x] Génération de tableau C prêt à copier
+- [x] **Opcode aliasing aléatoire** à la compilation
+- [x] **Bytecode pré-chiffré** (XOR appliqué par l'assembleur)
+- [x] **Dead code insertion** automatique
 
 ### Exemple de syntaxe supportée
 ```asm
@@ -163,20 +166,71 @@ end:
 
 ---
 
-## 📋 Étape 8 : Obfuscation niveau 3 (À VENIR)
+## ✅ Étape 8 : Obfuscation niveau 3 — Control Flow Flattening (COMPLÉTÉ)
+
+### Technique implémentée
+- [x] Machine à états avec `VMState` enum
+- [x] Dispatcher transformé en switch géant
+- [x] 15 états : FETCH, DECODE, EXEC_*, HALT
+- [x] Flux de contrôle non-linéaire
+
+### États de la VM
+```c
+typedef enum {
+    STATE_FETCH,        // Lecture de l'opcode
+    STATE_DECODE,       // Détermination de l'instruction
+    STATE_EXEC_PUSH,    // Exécution PUSH
+    STATE_EXEC_POP,     // Exécution POP
+    STATE_EXEC_ADD,     // Exécution ADD
+    STATE_EXEC_SUB,     // Exécution SUB
+    STATE_EXEC_CMP,     // Exécution CMP
+    STATE_EXEC_JMP,     // Exécution JMP
+    STATE_EXEC_JEQ,     // Exécution JEQ
+    STATE_EXEC_JNE,     // Exécution JNE
+    STATE_EXEC_LOAD,    // Exécution LOAD
+    STATE_EXEC_STORE,   // Exécution STORE
+    STATE_EXEC_DUP,     // Exécution DUP
+    STATE_EXEC_SWAP,    // Exécution SWAP
+    STATE_HALT,         // Arrêt de la VM
+} VMState;
+```
+
+### Pourquoi c'est efficace
+| Avant | Après |
+|-------|-------|
+| `while` → `call handler` | Switch géant avec 15 cases |
+| Flux linéaire prévisible | Variable `state` imprévisible |
+| IDA reconstruit facilement | IDA montre un spaghetti |
+
+---
+
+## 📋 Étape 9 : Améliorations avancées (À VENIR)
 
 ### Techniques à implémenter
-- [ ] Dead code insertion (dans l'assembleur Python)
+- [ ] Opaque predicates (conditions toujours vraies/fausses)
+- [ ] Mélange aléatoire de l'ordre des cases
+- [ ] États factices (fake states)
+- [ ] Transitions indirectes via table
 - [ ] Super-operators (fusionner plusieurs opérations)
-- [ ] Control Flow Flattening
+- [ ] Anti-debug / Anti-VM detection
 
 ---
 
 ## 📊 Progression globale
 
 ```
-[███████████████████░] 90% - VM complète + Assembleur Python
+[█████████████████████] 95% - VM complète + Assembleur + Control Flow Flattening
 ```
+
+---
+
+## 🏰 Architecture Forteresse — Les 3 Piliers
+
+| Pilier | Description | Status |
+|--------|-------------|--------|
+| 1. Stack Machine | Pas de registres visibles, tout sur la pile | ✅ |
+| 2. Computed Goto + MBA | Table de handlers + expressions opaques | ✅ |
+| 3. Control Flow Flattening | Machine à états, flux non-linéaire | ✅ |
 
 ---
 
@@ -184,23 +238,29 @@ end:
 
 | Fichier | Description |
 |---------|-------------|
-| `vm.c` | VM principale avec tous les handlers |
-| `assembler.py` | Convertisseur ASM → bytecode C |
+| `vm.c` | VM principale avec tous les handlers + flattening |
+| `assembler.py` | Convertisseur ASM → bytecode C (avec obfuscation) |
 | `test.asm` | Programme de test |
 
 ---
 
-## 🔗 Ressources
+## 🔗 Techniques d'obfuscation implémentées
 
-- Document de référence : "Architecture Forteresse" (3 piliers)
-  1. Stack Machine ✅
-  2. Computed Goto + MBA ✅
-  3. Control Flow Flattening (à venir)
+| Technique | Cible | Impact |
+|-----------|-------|--------|
+| Rolling XOR | Bytecode | Illisible statiquement |
+| Opcode aliasing | Pattern matching | 4 représentations par instruction |
+| MBA | Analyse symbolique | Expressions mathématiques opaques |
+| Dead code | Analyse statique | Bruit dans le bytecode |
+| Control Flow Flattening | Décompilateurs | Structure de contrôle détruite |
 
 ---
 
-## 🎯 Prochaines étapes suggérées
+## 🎯 Prochaines améliorations suggérées
 
-1. **Dead code insertion** : Modifier l'assembleur pour insérer du bruit automatiquement
-2. **Super-operators** : Fusionner `LOAD + PUSH + CMP` en un seul opcode
-3. **Control Flow Flattening** : Variable d'état + dispatcher central
+1. **Opaque predicates** : `if ((x*x) >= 0)` toujours vrai
+2. **Shuffle des cases** : ordre aléatoire dans le switch
+3. **Fake states** : états qui ne font rien mais existent
+4. **Table de transitions** : `next_state = table[current][opcode]`
+5. **Super-operators** : `LOAD_CMP` = LOAD + PUSH + CMP
+6. **Anti-debug** : détecter GDB/strace/ptrace
