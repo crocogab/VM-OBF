@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #define PUSH 0x01
 #define POP  0x02
@@ -68,6 +70,11 @@
 #define HALT3 0xFD
 #define HALT4 0xFC
 
+#define SYS  0x0D  
+#define SYS2 0x1D
+#define SYS3 0x2D
+#define SYS4 0x3D
+
 #define KEY  0x37
 
 
@@ -91,7 +98,8 @@ typedef enum {
     STATE_FAKE2,
     STATE_FAKE3,
     STATE_FAKE4,
-    STATE_FAKE5
+    STATE_FAKE5,
+    STATE_EXEC_SYS
 } VMState;
 
 
@@ -117,6 +125,7 @@ VMState decode_opcode(__uint64_t opcode) {
         case 0x0A: return STATE_EXEC_STORE;
         case 0x0B: return STATE_EXEC_DUP;
         case 0x0C: return STATE_EXEC_SWAP;
+        case 0x0D: return STATE_EXEC_SYS;
         default:   return STATE_HALT;
     }
 }
@@ -266,6 +275,63 @@ void handler_swap(VMContext *vm,__uint64_t *bytecode){
     push(vm,b);
 }
 
+#include <unistd.h>
+
+void handler_syscall(VMContext *vm, __uint64_t *bytecode) {
+    // Ordre des pops : ID, RDI, RSI, RDX
+    __uint64_t syscall_id = pop(vm);
+    __uint64_t arg1 = pop(vm); // RDI : Index du chemin (path)
+    __uint64_t arg2 = pop(vm); // RSI : Index du tableau argv
+    __uint64_t arg3 = pop(vm); // RDX : Index de envp (on va l'ignorer pour simplifier)
+
+    __uint64_t ret = 0;
+
+    switch(syscall_id) {
+        case 1: // WRITE
+            // ... (ton code write existant) ...
+            break;
+            
+        case 59: // EXECVE
+        {
+            // 1. Récupérer le chemin du programme (cast en char* pour lire les octets bruts)
+            char *real_path = (char *)&vm->memory[arg1];
+
+            // 2. Reconstruire le tableau argv[]
+            // arg2 pointe vers une zone de mémoire contenant les INDEXES des arguments
+            char *real_argv[16]; // Max 16 arguments pour notre VM
+            int i = 0;
+            
+            while (i < 15) {
+                // On lit l'index stocké dans la "mémoire pointeurs"
+                __uint64_t str_index = vm->memory[arg2 + i];
+                
+                // Convention : 0 ou une valeur énorme = NULL (fin du tableau)
+                // Ici on utilise 0 comme terminateur NULL
+                if (str_index == 0) break; 
+                
+                // On convertit l'index VM en pointeur réel
+                real_argv[i] = (char *)&vm->memory[str_index];
+                i++;
+            }
+            real_argv[i] = NULL; // Terminateur NULL requis par execve
+
+            printf("[VM] EXECVE Target: %s\n", real_path);
+            for(int j=0; j<i; j++) printf("   Arg[%d]: %s\n", j, real_argv[j]);
+
+            // 3. Exécution réelle (Ceci remplace le processus actuel !)
+            ret = execve(real_path, real_argv, NULL);
+            
+            // Si on arrive ici, c'est que execve a échoué
+            perror("Execve failed");
+            break;
+        }
+             
+        default:
+            printf("Syscall %llu non implémenté\n", syscall_id);
+    }
+    
+    push(vm, ret);
+}
 
 // === TABLE DE HANDLERS ===
 Handler handlers[256];
@@ -354,6 +420,12 @@ void init_handlers(void) {
     handlers[HALT3] = handler_halt;
     handlers[HALT4] = handler_halt;
 
+    //SYS
+    handlers[SYS]  = handler_syscall;
+    handlers[SYS2] = handler_syscall;
+    handlers[SYS3] = handler_syscall;
+    handlers[SYS4] = handler_syscall;
+
     
 }
 
@@ -419,6 +491,9 @@ void run(VMContext *vm, __uint64_t *bytecode) {
                     case SWAP: case SWAP2: case SWAP3: case SWAP4:
                         state = STATE_EXEC_SWAP;
                         break;
+                    case SYS: case SYS2: case SYS3: case SYS4:
+                        state = STATE_EXEC_SYS;
+                        break;
                     case HALT: case HALT2: case HALT3: case HALT4:
                         state = STATE_HALT;
                         break;
@@ -441,6 +516,11 @@ void run(VMContext *vm, __uint64_t *bytecode) {
                 state = vm->running ? STATE_FETCH : STATE_HALT;
                 break;
             
+            case STATE_EXEC_SYS:
+                handler_syscall(vm, bytecode);
+                state = vm->running ? STATE_FETCH : STATE_HALT;
+                break;
+
             case STATE_EXEC_ADD:
                 handler_add(vm, bytecode);
                 state = vm->running ? STATE_FETCH : STATE_HALT;
@@ -542,7 +622,7 @@ int main(void) {
     scanf("%255s", vm.input);
 
     __uint64_t bytecode[] = {
-    0x1E, 0x3E, 0x74, 0x1F, 0x66, 0x62, 0x6A, 0x59, 0x6E, 0x50, 0x70, 0x85, 0x8B, 0x6C
+    0x0000000000000006, 0x6E69622F72737511, 0x000000000000006F, 0x000000000000007E, 0x0000000000000052, 0x0000000000636E75, 0x000000000000005D, 0x0000000000000064, 0x0000000000000045, 0x0000000000000045, 0x000000000000006C, 0x0000000000000085, 0x000000000000008A, 0x0000000000000093, 0x00000000000000BD, 0x00000000000000A2, 0x00000000000000B6, 0x2E302E302E37329F, 0x0000000000000094, 0x00000000000000BC, 0x00000000000000F0, 0x00000000000000E0, 0x00000000000000E5, 0x00000000000000F9, 0x00000000000000EE, 0x00000000000000EC, 0x00000000000000D8, 0x00000000000000CF, 0x00000000000000E9, 0x0000000000000003, 0x000000003434343D, 0x000000000000003A, 0x0000000000000021, 0x000000000000003F, 0x000000000000000F, 0x000000000000003E, 0x0000000000000022, 0x0000000000006517, 0x000000000000005B, 0x000000000000007F, 0x000000000000005E, 0x0068732F6E696279, 0x0000000000000047, 0x000000000000005C, 0x000000000000007A, 0x0000000000000040, 0x0000000000000053, 0x000000000000008A, 0x00000000000000A6, 0x00000000000000BA, 0x00000000000000AF, 0x0000000000000097, 0x0000000000000092, 0x000000000000009C, 0x00000000000000AB, 0x00000000000000B4, 0x000000000000008E, 0x00000000000000F1, 0x00000000000000C7, 0x00000000000000D9, 0x00000000000000DA, 0x00000000000000DA, 0x00000000000000F3, 0x00000000000000FE, 0x00000000000000E6, 0x00000000000000FE, 0x000000000000002F, 0x0000000000000003, 0x0000000000000022, 0x000000000000001A, 0x0000000000000020, 0x0000000000000022, 0x000000000000003E, 0x0000000000000004, 0x0000000000000011, 0x0000000000000068, 0x000000000000006A, 0x0000000000000069, 0x0000000000000058, 0x0000000000000061, 0x0000000000000076, 0x000000000000006F, 0x0000000000000071, 0x000000000000007E, 0x000000000000008E, 0x0000000000000074
     };
     
     

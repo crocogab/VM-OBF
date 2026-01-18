@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 import random
+import sys
 
+# === CONFIGURATION ===
+# Mapping des instructions : "NOM": (Opcode de base, Nombre d'arguments IMMÉDIATS)
+# Note: SYS prend ses arguments sur la PILE, pas en immédiat, donc nb_args=0
 INSTRUCTIONS = {
-    "PUSH": (0x01, 1),   # (opcode, nb_arguments)
+    "PUSH": (0x01, 1),
     "POP":  (0x02, 0),
     "ADD":  (0x03, 0),
     "SUB":  (0x04, 0),
@@ -11,168 +15,137 @@ INSTRUCTIONS = {
     "JEQ":  (0x07, 1),
     "JNE":  (0x08, 1),
     "LOAD": (0x09, 1),
-    "STORE":(0x0A, 1),
+    "STORE":(0x0A, 1), # STORE <index> (pop value)
     "DUP":  (0x0B, 0),
     "SWAP": (0x0C, 0),
+    "SYS":  (0x0D, 0), # <--- NOUVELLE INSTRUCTION SYSCALL
     "HALT": (0xFF, 0),
 }
 
-
+# Séquences de code mort pour l'obfuscation
 DEAD_CODE_SEQUENCES = [
     ["PUSH 42", "POP"],
     ["DUP", "POP"],
     ["SWAP", "SWAP"],
     ["PUSH 0", "ADD"],
     ["PUSH 1", "PUSH 1", "SUB", "POP"],
-    ["PUSH 0","PUSH 0","ADD","DUP","POP","PUSH 0","ADD"]
-    
 ]
 
 def insert_dead_code(lines, probability=0.3):
-    """
-    Insère du dead code aléatoirement entre les instructions.
-    probability : chance d'insérer du dead code après chaque instruction
-    """
+    """Insère du code inutile pour brouiller les pistes."""
     result = []
-    
     for line in lines:
         result.append(line)
-        
         stripped = line.strip()
-        
-        # Ne pas insérer après labels, commentaires ou lignes vides
         if not stripped or stripped.startswith(";") or stripped.endswith(":"):
             continue
-        
-        # Insertion aléatoire
+        # Pas de dead code après un saut ou un halt, ça pourrait être inatteignable ou casser la logique
+        if stripped.split()[0] in ["JMP", "HALT", "SYS"]:
+            continue
+            
         if random.random() < probability:
             sequence = random.choice(DEAD_CODE_SEQUENCES)
+            result.append(f"    ; --- dead code start ---")
             for dead_instr in sequence:
-                result.append(f"    {dead_instr}  ; dead code")
-    
+                result.append(f"    {dead_instr}")
+            result.append(f"    ; --- dead code end ---")
     return result
 
 def encrypt_bytecode(bytecode, key=0x37):
+    """Chiffrement Rolling XOR"""
     encrypted = []
     for b in bytecode:
-        encrypted.append(b ^ key)
+        # Simulation d'un uint64 pour le XOR, mais on garde en 64bit
+        # Attention: en Python les ints sont illimités, on masque avec 0xFFFFFFFFFFFFFFFF si besoin
+        # Mais ici on encrypte mot par mot (qui sont des opcodes ou des valeurs)
+        enc_val = b ^ key
+        encrypted.append(enc_val)
         key = (key + 7) & 0xFF
     return encrypted
 
 def get_random_opcode(base_opcode):
-    """Retourne un alias aléatoire de l'opcode."""
-    if base_opcode == 0xFF:  # HALT est spécial
+    """Ajoute du polymorphisme aux opcodes (0x01 -> 0x11, 0x21...)"""
+    if base_opcode == 0xFF:
         return random.choice([0xFF, 0xFE, 0xFD, 0xFC])
-    else:
+    if base_opcode == 0x0D: # SYS a aussi des variantes
         return base_opcode + random.choice([0x00, 0x10, 0x20, 0x30])
+        
+    return base_opcode + random.choice([0x00, 0x10, 0x20, 0x30])
 
 def pass1(lines):
-    """
-    Première passe : collecter les labels et leurs adresses.
-    Retourne : dictionnaire {nom_label: adresse}
-    """
+    """Récupère les adresses des labels"""
     labels = {}
     address = 0
-    
     for line in lines:
-        line = line.strip()
+        line = line.split(";")[0].strip() # Enlever commentaires
+        if not line: continue
         
-        # Ignorer lignes vides et commentaires
-        if not line or line.startswith(";"):
-            continue
-        
-        # C'est un label ?
         if line.endswith(":"):
-            label_name = line[:-1]  # Enlever le ":"
-            labels[label_name] = address
-            # Le label ne génère pas de bytecode
+            labels[line[:-1]] = address
             continue
-        
-        # C'est une instruction
+            
         parts = line.split()
         instr = parts[0].upper()
-        
         if instr not in INSTRUCTIONS:
             raise ValueError(f"Instruction inconnue : {instr}")
         
         opcode, nb_args = INSTRUCTIONS[instr]
-        address += 1 + nb_args  # opcode + arguments
-    
+        address += 1 + nb_args
     return labels
 
-
 def pass2(lines, labels):
-    """
-    Deuxième passe : générer le bytecode.
-    Retourne : liste d'entiers (le bytecode)
-    """
+    """Génère le bytecode brut"""
     bytecode = []
-    
     for line in lines:
-        line = line.strip()
-        
-        # Ignorer lignes vides, commentaires et labels
-        if not line or line.startswith(";") or line.endswith(":"):
-            continue
+        line = line.split(";")[0].strip()
+        if not line or line.endswith(":"): continue
         
         parts = line.split()
         instr = parts[0].upper()
         opcode, nb_args = INSTRUCTIONS[instr]
         
-        bytecode.append(get_random_opcode(opcode)) 
+        # Ajout Opcode
+        bytecode.append(get_random_opcode(opcode))
         
-        # Traiter l'argument si présent
+        # Ajout Argument (si existe)
         if nb_args == 1:
             arg = parts[1]
-            
             if arg in labels:
-                # c'est un label
                 bytecode.append(labels[arg])
             else:
-                # ce n'est pas un bytecode -> soit un PUSH / JMP/ JEQ / JNE /LOAD STORE -> dans tous les cas on ajoute juste bytecode
-                bytecode.append(int(arg))
-                
-    
-    return bytecode
+                # Supporte hex (0x...) et int décimal
+                try:
+                    bytecode.append(int(arg, 0))
+                except ValueError:
+                     raise ValueError(f"Argument invalide : {arg} à la ligne : {line}")
 
+    return bytecode
 
 def generate_c_array(bytecode):
     encrypted = encrypt_bytecode(bytecode)
-    elements = ", ".join(f"0x{b:02X}" for b in encrypted)
+    # Formatage propre pour le C
+    elements = ", ".join(f"0x{b:016X}" for b in encrypted)
     return f"__uint64_t bytecode[] = {{\n    {elements}\n}};"
 
-
-def assemble(filename):
-    """Assemble un fichier .asm en bytecode."""
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-    
-    lines=insert_dead_code(lines,0.3)
-    labels = pass1(lines)
-    bytecode = pass2(lines, labels)
-    
-    return bytecode, labels
-
-
 def main():
-    import sys
-    
     if len(sys.argv) != 2:
         print("Usage: python assembler.py <fichier.asm>")
         sys.exit(1)
     
     filename = sys.argv[1]
-    bytecode, labels = assemble(filename)
+    with open(filename, 'r') as f:
+        lines = f.readlines()
     
-    print("; Labels trouvés :")
-    for name, addr in labels.items():
-        print(f";   {name} = {addr}")
+    # Injection de code mort (désactivable en mettant 0.0)
+    lines_obf = insert_dead_code(lines, probability=0.3)
     
-    print()
+    # Assemblage
+    labels = pass1(lines_obf)
+    bytecode = pass2(lines_obf, labels)
+    
+    print(f"// Assemblé depuis {filename}")
+    print(f"// Taille: {len(bytecode)} mots (uint64)")
     print(generate_c_array(bytecode))
-    print()
-    print(f"; Taille : {len(bytecode)} mots")
-
 
 if __name__ == "__main__":
-    main()
+    main()  
