@@ -195,11 +195,11 @@ pingback-vm/
 **Validation :** Le code compile, les structures sont cohérentes.
 
 #### Étape 1.2 — Cycle de vie VM
-- [ ] Créer `src/vm/vm.c`
-  - [ ] `vm_init()` : allocation mémoire, init registres
-  - [ ] `vm_load()` : charger bytecode en mémoire
-  - [ ] `vm_destroy()` : libération propre
-  - [ ] `vm_dump()` : debug, afficher état (registres, stack)
+- [x] Créer `src/vm/vm.c`
+  - [x] `vm_init()` : allocation mémoire, init registres
+  - [x] `vm_load()` : charger bytecode en mémoire
+  - [x] `vm_destroy()` : libération propre
+  - [x] `vm_dump()` : debug, afficher état (registres, stack)
 
 **Validation :** Tu peux init/destroy une VM, charger un buffer, dumper l'état.
 

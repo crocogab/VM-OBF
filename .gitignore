@@ -1,1 +1,21 @@
-vm
+# Build
+build/
+*.o
+*.out
+
+# Binaries
+*.exe
+
+# Debug
+*.dSYM/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
