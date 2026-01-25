@@ -10,8 +10,7 @@ void handler_nop(vm_state_t * vm){
 }
 
 void handler_halt(vm_state_t * vm){
-    vm->running=0;
-    VM_IP(vm)+=4;
+    vm->running=0;  
 }
 
 void handler_break(vm_state_t *vm) {
@@ -63,7 +62,7 @@ void handler_mov_w3(vm_state_t * vm,uint8_t instr_dst, uint16_t instr_imm16){
     VM_IP(vm)+=4;
 }
 
-void handler_mov_xchg(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1){
+void handler_xchg(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1){
     /* Echange valeur de deux registres*/
     uint64_t temp = vm->regs[instr_dst];
     vm->regs[instr_dst]=vm->regs[instr_src1];
@@ -71,7 +70,7 @@ void handler_mov_xchg(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1){
     VM_IP(vm)+=4;
 }
 
-void handler_mov_lea(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1,uint8_t instr_imm8){
+void handler_lea(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1,uint8_t instr_imm8){
     /* REG[INSTR_DST] = REG[SRC1] + IMM8 */
 
     vm->regs[instr_dst] = vm->regs[instr_src1] + instr_imm8;
@@ -185,3 +184,102 @@ void handler_sub_rr(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1){
 }
 
 
+void handler_sub_ri(vm_state_t * vm,uint8_t instr_dst, uint16_t instr_imm16){
+    /* 
+    REG[INSTR_DST] = REG[INSTR_DST] - REG[INSTR_SRC1]
+    
+    RESULT = 0 -> ZF
+    RESULTAT < 0 -> SF (63 eme bit à 1)
+    RESULTAT depassement non signé (depasse mais reste bornes) ->CF
+    RESULTAT depassement non signé -> OF
+
+    */
+    uint64_t a = (uint64_t)vm->regs[instr_dst];
+    uint64_t b = (uint64_t)instr_imm16;
+    uint64_t result = a - b;
+
+    vm->regs[instr_dst] = (int64_t)result;
+    VM_FLAGS(vm)=0;
+    
+    if (result ==0 ){
+        // |= (or composé) -> permet de pas perdre ancien flag
+        VM_FLAGS(vm)|= FLAG_ZF;
+    }
+    if ((int64_t)result <0){
+        VM_FLAGS(vm)|= FLAG_SF;
+    }
+    if (a < b){
+        VM_FLAGS(vm) |= FLAG_CF;
+    }
+        
+    if (((a ^ b) & (a ^ result)) >> 63){
+        VM_FLAGS(vm) |= FLAG_OF;
+    }
+        
+    
+    VM_IP(vm) += 4;
+}
+
+void handler_mul_rr(vm_state_t * vm,uint8_t instr_dst, uint8_t instr_src1){
+    /* 
+    REG[INSTR_DST] = REG[INSTR_DST] * REG[INSTR_SRC1]
+    
+    RESULT = 0 -> ZF
+    RESULTAT < 0 -> SF (63 eme bit à 1)
+    RESULTAT depassement non signé (depasse mais reste bornes) ->CF
+    RESULTAT depassement non signé -> OF
+
+    */
+    uint64_t a = (uint64_t)vm->regs[instr_dst];
+    uint64_t b = (uint64_t)vm->regs[instr_src1];
+    uint64_t result = a * b;
+
+    vm->regs[instr_dst] = (int64_t)result;
+    VM_FLAGS(vm)=0;
+    
+    if (result ==0 ){
+        // |= (or composé) -> permet de pas perdre ancien flag
+        VM_FLAGS(vm)|= FLAG_ZF;
+    }
+    if ((int64_t)result <0){
+        VM_FLAGS(vm)|= FLAG_SF;
+    }
+        
+    if (b != 0 && result / b != a){
+        VM_FLAGS(vm) |= FLAG_CF | FLAG_OF;
+    }
+    
+    VM_IP(vm) += 4;
+}
+
+
+void handler_mul_ri(vm_state_t * vm,uint8_t instr_dst, uint16_t instr_imm16){
+    /* 
+    REG[INSTR_DST] = REG[INSTR_DST] * INSTR_SRC1
+    
+    RESULT = 0 -> ZF
+    RESULTAT < 0 -> SF (63 eme bit à 1)
+    RESULTAT depassement non signé (depasse mais reste bornes) ->CF
+    RESULTAT depassement non signé -> OF
+
+    */
+    uint64_t a = (uint64_t)vm->regs[instr_dst];
+    uint64_t b = (uint64_t)instr_imm16;
+    uint64_t result = a * b;
+
+    vm->regs[instr_dst] = (int64_t)result;
+    VM_FLAGS(vm)=0;
+    
+    if (result ==0 ){
+        // |= (or composé) -> permet de pas perdre ancien flag
+        VM_FLAGS(vm)|= FLAG_ZF;
+    }
+    if ((int64_t)result <0){
+        VM_FLAGS(vm)|= FLAG_SF;
+    }
+    if (b != 0 && result / b != a){
+        VM_FLAGS(vm) |= FLAG_CF | FLAG_OF;
+    }
+    
+    VM_IP(vm) += 4;
+}

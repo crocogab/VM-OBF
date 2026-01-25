@@ -204,18 +204,18 @@ pingback-vm/
 **Validation :** Tu peux init/destroy une VM, charger un buffer, dumper l'état.
 
 #### Étape 1.3 — Dispatcher simple (switch)
-- [ ] Créer `src/vm/dispatcher.c`
-  - [ ] Boucle fetch-decode-execute avec switch/case
-  - [ ] Fetch : lire 4 bytes à IP
-  - [ ] Decode : extraire opcode, dst, src1, src2
-  - [ ] Execute : switch sur opcode
-  - [ ] Incrémenter IP
+- [x] Créer `src/vm/dispatcher.c`
+  - [x] Boucle fetch-decode-execute avec switch/case
+  - [x] Fetch : lire 4 bytes à IP
+  - [x] Decode : extraire opcode, dst, src1, src2
+  - [x] Execute : switch sur opcode
+  - [x] Incrémenter IP
 
 **Validation :** La VM peut exécuter une séquence de NOP et HALT.
 
 #### Étape 1.4 — Handlers arithmétiques/logiques
-- [ ] Dans `src/vm/handlers.c`
-  - [ ] `MOV` (reg ← reg, reg ← imm)
+- [X] Dans `src/vm/handlers.c`
+  - [X] `MOV` (reg ← reg, reg ← imm)
   - [ ] `ADD`, `SUB`, `MUL`, `DIV`, `MOD`
   - [ ] `AND`, `OR`, `XOR`, `NOT`
   - [ ] `SHL`, `SHR`
@@ -448,16 +448,6 @@ pingback-vm/
 - [MBA Obfuscation paper](https://www.usenix.org/conference/usenixsecurity21/presentation/liu-binbin)
 - [Tigress (inspiration)](https://tigress.wtf/)
 
----
-
-## Journal de progression
-
-| Date | Étape | Status | Notes |
-|------|-------|--------|-------|
-| | 1.1 | ⬜ | |
-| | 1.2 | ⬜ | |
-| | ... | | |
 
 ---
 
-**Bon courage ! Envoie-moi ton code à chaque étape pour review.**
